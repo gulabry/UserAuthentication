@@ -36,6 +36,7 @@ class User {
                 "info": this._email
             }
         };
+       
 
         console.log("Adding a new user to db...");
         
@@ -51,6 +52,35 @@ class User {
     hashPassword() {
         
     }
+    
+    findOrCreate(email, next) {
+        //find the user
+        db.getItem(params, function(err, data) {
+            if (err) {
+                console.log(err);
+                done(null, false);
+                
+            } else {
+                
+            //If no user was returned from the query, fail local auth
+            if (Object.keys(data).length == 0) {
+                
+                    return done(null, false);
+                    
+                } else {
+
+                        var userObject = { 
+                            username : data.Item.username.S,
+                            email : data.Item.email.S 
+                        }    
+
+                        console.log('Local Stratgey: ' + JSON.stringify(userObject));
+                        done(null, JSON.stringify(userObject)); 
+                }
+            }
+        }); 
+            
+    };
 }
 
 //export the User class

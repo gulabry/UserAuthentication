@@ -3,30 +3,71 @@
 <head>
     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta charset="UTF-8">
-    
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
 
     <title>Secure</title>
 </head>
 <body class="container">
-    <header class="page-header">
-        <h3>You're in the secure login page</h3>
+    <header class="page-header"> 
         <nav class="navbar navbar-default">
         <div class="container-fluid">
             <div class="navbar-header">
-                <a class="navbar-brand" href="#">
-                    <span class="glyphicon glyphicon-sunglasses" aria-hidden="true"></span>
-                </a>
+                <a class="navbar-brand" id="welcome"></a>
             </div>
             
             <div class="navbar-form navbar-right">
-               <a href="index.html"><button type="submit" class="btn btn-warning">Logout</button></a>
+                <button id="showProfile" class="btn btn-success">Show Profile</button>
+                <a href="/signout" ><button class="btn btn-danger">Sign Out</button></a>
             </div>
         </div>
 </nav>
     </header>
-    
-        <h1>Welcome back, Bryan</h1>
+        <script>
+            $(function(){
+               var xhttp = new XMLHttpRequest();
+               xhttp.open("GET", "/getCurrentUser", false);
+               xhttp.send();
+               
+               var userObject = JSON.parse(xhttp.responseText);
+               
+               document.getElementById("welcome").innerHTML = "Welcome back, " + userObject.username;
+
+                $("#profileData").hide();
+                    
+                $("#showProfile").click(function(){
+                    $("#profileData").show();
+                  
+                    document.getElementById("username").innerHTML = "Username: " + userObject.username;
+                    document.getElementById("email").innerHTML = "Email: " + userObject.email;
+
+                });
+                
+                $("#hideProfile").click(function() {
+                    $("#profileData").hide();
+                });
+             }); 
+
+        </script>
+        
+        <div class="row">
+            <div class="col-xs-6">
+
+            </div>
+            <div class="col-xs-6">
+                <div id="profileData" class="col-xs-6">
+                    <h3>Profile</h3>
+                    <ul id="username">
+                        <li id="username"></li>
+                    </ul>
+                    <ul id="email">
+                        <il id="email"></il>
+                    </ul>
+                    <button id="hideProfile" class="btn btn-danger">Hide</button>
+                    <button class="btn btn-primary">Edit</button>
+                </div>
+            </div>
+        </div>
 
 </body>
 </html>
