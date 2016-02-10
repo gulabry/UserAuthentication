@@ -6,7 +6,10 @@ var morgan = require('morgan');
 var bodyParser = require('body-parser');
 var session = require('express-session');
 var credentials = require('./secret/aws-credentials.json');
-var uuid = require('node-uuid');
+var uuid = require('uuid');
+var crypto = require('crypto');
+var bluebird = require('bluebird');
+var bcrypt = bluebird.promisifyAll(require('bcrypt'));
 var User = require('./model/User');
 var passport = require('passport');
 var FacebookStrategy = require('passport-facebook').Strategy;
@@ -17,8 +20,7 @@ var app = express();
 
 //Connects to AWS Elasticache Endpoint 
 
-//credentials.aws.elasticacheEndpoint
-var redisClient = require('redis').createClient(6379, '127.0.0.1', {no_ready_check: true});
+var redisClient = require('redis').createClient(6379, '127.0.0.1' /*credentials.aws.elasticacheEndpoint*/, {no_ready_check: true});
 var RedisStore = require('connect-redis')(session);
 
 //Configure AWS
@@ -36,26 +38,128 @@ app.use(session({
 }));
 
 //Log all requests to application with Morgan
-app.use(morgan('dev'))
+app.use(morgan('dev'));
+app.disable('etag');
 
 //parse JSON in the request body
 app.use(bodyParser.urlencoded({
   extended: true
 }));
 
+//Returns the current user saved in the session.user variable
 app.get('/getCurrentUser', function(req, res) {
     
     if (session.user !== undefined) {
-        
+        //set email hash for gravitar lookup
+        session.user.imageHash = crypto.createHash('md5').update(session.user.email).digest('hex');
         res.send(session.user);
         
     } else {
-        
-        res.send({username : "User"});  
+        res.send({username : "please login again."});  
     }
-    
 });
 
+app.post('/updateUser', function(req, res) {
+    
+    console.log("Body " + JSON.stringify(req.body));
+    console.log(JSON.stringify(session.user));
+    
+    var newUsername = session.user.username;
+    //if the user has a new username to add
+    if (req.body.username !== undefined && req.body.username.length > 0) {
+        newUsername = req.body.username;
+    }
+    
+    console.log("Username: " + newUsername);
+    
+    //if this user has a new email to add
+    var newEmail = session.user.email;
+    
+    if (req.body.email !== undefined && req.body.email.length > 0) {
+        newEmail = req.body.email;
+    }
+    
+    console.log("Email: " + newEmail);
+        
+        //grab password
+        var newPassword = session.user.password;
+        
+        
+        //if the password typed is the users password, auth to change it
+        if (newPassword === req.body.currentPassword && req.body.newPassword === req.body.newPasswordConfirm) {
+            newPassword = req.body.newPassword;
+        
+            
+            bcrypt.hashAsync(newPassword, 10)
+                .then(function(hash) {
+                    
+                    
+                    var fullyUpdatedUser = {
+                        "username": { "S": session.user.username},
+                        "email": { "S": newEmail },
+                        "password": { "S": hash },
+                        "displayName": {"S" : newUsername}  
+                    }
+                        
+                    console.log(fullyUpdatedUser);    
+                        
+                    database.putItem({
+                        "TableName": "User",
+                        "Item": fullyUpdatedUser
+                    }, function (err, data) {
+                        if (err) {
+                            console.log(err);
+                        } else {
+                            console.log("User changed: " + JSON.stringify(fullyUpdatedUser));
+                            
+                            var formattedUser = {
+                                username: fullyUpdatedUser.username.S,
+                                email: fullyUpdatedUser.email.S,
+                                password: fullyUpdatedUser.password.S,
+                                displayName : fullyUpdatedUser.displayName.S 
+                            }
+                            
+                            session.user = formattedUser;
+                            res.redirect('/secure.html');
+                        }
+                    });     
+            }).catch(function(err) {
+                console.log(err);
+            });
+        } else {
+            
+            var fullyUpdatedUser = {
+                        "username": { "S": session.user.username},
+                        "email": { "S": newEmail },
+                        "password": { "S": newPassword },
+                        "displayName": {"S" : newUsername}  
+                    }
+                        
+                    console.log(fullyUpdatedUser);    
+                        
+                    database.putItem({
+                        "TableName": "User",
+                        "Item": fullyUpdatedUser
+                    }, function (err, data) {
+                        if (err) {
+                            console.log(err);
+                        } else {
+                            console.log("User changed: " + JSON.stringify(fullyUpdatedUser));
+                            
+                            var formattedUser = {
+                                username: fullyUpdatedUser.username.S,
+                                email: fullyUpdatedUser.email.S,
+                                password: fullyUpdatedUser.password.S,
+                                displayName : fullyUpdatedUser.displayName.S 
+                            }
+                            
+                            session.user = formattedUser;
+                            res.redirect('/secure.html');
+                        }
+                    });
+        }
+         
+});
 
 
 //Configure Passport
@@ -66,7 +170,7 @@ var localStrategy = new LocalStrategy(function(username, password, done) {
   
    //Dynamo DB query syntax
     var params = {
-        AttributesToGet : ["email", "username", "password"],
+        AttributesToGet : ["email", "username", "password", "displayName"],
         TableName : "User",
         Key : {
             "username" : {
@@ -89,21 +193,38 @@ var localStrategy = new LocalStrategy(function(username, password, done) {
                 return done(null, false);
                 
             } else {
+                
+                    bcrypt.hashAsync(password, 10)
+                    .then(function(hash) {
+                        return [hash, bcrypt.compareAsync(password, data.Item.password.S)];
+                    }).spread(function(hash, isSame) {
+                            if (isSame) {
+                                var userObject = { 
+                                    username : data.Item.username.S,
+                                    email : data.Item.email.S,
+                                    password: password,
+                                    displayName : data.Item.displayName.S 
+                                }    
+                                
+                                session.user = userObject;
 
-                if (data.Item.password.S === password) {
-                    var userObject = { 
-                        username : data.Item.username.S,
-                        email : data.Item.email.S 
-                    }    
-                    
-                    session.user = userObject;
-
-                    console.log('Local Stratgey: ' + JSON.stringify(userObject));
-                    done(null, JSON.stringify(userObject)); 
-                } else {
-                    console.log("password didn't match");
-                    return done(null, false);
-                }
+                                console.log('Local Stratgey: ' + JSON.stringify(userObject));
+                                return done(null, JSON.stringify(userObject)); 
+                            } else {
+                                
+                                res.json({ message : "Username or Password incorrect."});
+                                res.end();
+                                return done(null, false);
+                            }
+                    })
+                    .catch(function(err) {
+                        
+                        console.log(err);
+                        return done(null, false);
+                    });
+                
+                
+            
 
             }
         }
@@ -120,19 +241,18 @@ var facebookStrategy = new FacebookStrategy({
     addUser(profile, cb)
   });
   
-
-
 //This function only adds new users to Dynamo, however if use exists it overwrites the data
 var addUser = function(profile, cb) {
     
-    console.log(profile);
+           console.log(profile);
 
             var newUser = {
                 "username": {"S": profile.displayName},
                 "email": {"S": "test@email.com"},
-                "password": {"S": "facebookDisplay"}
+                "password": {"S": uuid.v1()},
+                "displayName" : {"S": profile.displayName}
             }
-            
+
         database.putItem({
             "TableName": "User",
             "Item": newUser
@@ -145,7 +265,8 @@ var addUser = function(profile, cb) {
             var formattedUser = {
                 username: newUser.username.S,
                 email: newUser.email.S,
-                password: newUser.password.S 
+                password: newUser.password.S,
+                displayName: newUser.username.S 
             }
             
             session.user = formattedUser;
@@ -227,41 +348,50 @@ app.post('/createUser', function(req, res) {
     //if the password and confirm match, add user
     if (req.body.password === req.body.passwordConfirm) {
         
-        var params = {
-            "TableName": "User",
-            "Item": {
-                "username": {"S": req.body.username},
-                "email": {"S": req.body.email},
-                "password": {"S": req.body.password}
-            }
-        }
-        
-        database.putItem(params
-        , function (err, data) {
-            if (err) {
-                console.log(err);
-            } else {
-                console.log("User added: " + JSON.stringify(data));
+        bcrypt.hashAsync(req.body.password, 10)
+            .then(function(hash) {
+                
+                // console.log(hash);
+                var params = {
+                        "TableName": "User",
+                        "Item": {
+                            "username": {"S": req.body.username},
+                            "displayName": {"S": req.body.displayName},
+                            "email": {"S": req.body.email},
+                            "password": {"S": hash}
+                        }
+                    }
                     
-                var newUser = params.Item;    
-                             
-                var formattedUser = {
-                    username: newUser.username.S,
-                    email: newUser.email.S,
-                    password: newUser.password.S 
-                }
+                database.putItem(params, 
+                    function (err, data) {
+                        if (err) {
+                            console.log(err);
+                        } else {
+                            console.log("User added: " + JSON.stringify(data));
+                                
+                            var newUser = params.Item;    
+                                        
+                            var formattedUser = {
+                                username: newUser.username.S,
+                                displayName: newUser.displayName.S, 
+                                email: newUser.email.S,
+                                password: newUser.password.S
+                            }
+                            
+                            session.user = formattedUser;
+        
+                            req.login(data, function(err) {
+                                if (err) { return next(err); }
+                                return res.redirect('/secure.html');
+                            });
+                        }
+                    });
                 
-                session.user = formattedUser;
-                
-                // req.user = JSON.stringify(data);
-                req.login(data, function(err) {
-                    if (err) { return next(err); }
-                    return res.redirect('/secure.html');
-                });
-            }
-        });
+            });
+        
     } else {
        res.send("Passwords don't match, try again!");
+       res.end();
     }
     
 });

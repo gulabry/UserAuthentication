@@ -30,15 +30,22 @@
                xhttp.send();
                
                var userObject = JSON.parse(xhttp.responseText);
+               console.log(userObject);
                
-               document.getElementById("welcome").innerHTML = "Welcome back, " + userObject.username;
+               document.getElementById("welcome").innerHTML = "Welcome back, " + userObject.displayName;
 
                 $("#profileData").hide();
+                $("#editProfileData").hide();
                     
                 $("#showProfile").click(function(){
                     $("#profileData").show();
-                  
+                    $("#editProfileData").hide();
+                    
+                    console.log(JSON.stringify("http://www.gravatar.com/avatar/" + userObject.imageHash));
+                    $("#profileImage").attr("src", "http://www.gravatar.com/avatar/" + userObject.imageHash);
+                    
                     document.getElementById("username").innerHTML = "Username: " + userObject.username;
+                    document.getElementById("displayName").innerHTML = "Display Name: " + userObject.displayName;
                     document.getElementById("email").innerHTML = "Email: " + userObject.email;
 
                 });
@@ -46,25 +53,73 @@
                 $("#hideProfile").click(function() {
                     $("#profileData").hide();
                 });
+                
+                $("#editProfile").click(function() {
+                    $("#profileData").hide();
+                    $("#editProfileData").show();
+                });
+                
+                $("#cancelEdit").click(function() {
+                    $("#profileData").show();
+                    $("#editProfileData").hide();
+                });
+                
+                $("changeProfile").submit(function(event) {
+                    event.preventDefault();
+                    changeProfileData();
+                    return false;
+                });
+                
+                function changeProfileData() {
+                    $.post("/updateUser",
+                    { newUsername : this.username,
+                      newEmail : this.email,
+                      currentPassword : this.currentPassword, 
+                      newPassword : this.newPassword, 
+                      newPasswordConfirm : this.newPasswordConfirm 
+                    },function(data) {
+                        $("#profileData").show();
+                        $("#editProfileData").hide();
+                        // $.get('/secure');
+                    });
+                }
+                
              }); 
+             
 
         </script>
         
         <div class="row">
-            <div class="col-xs-6">
+            <div class="col-xs-12">
 
             </div>
-            <div class="col-xs-6">
-                <div id="profileData" class="col-xs-6">
+            <div class="col-xs-12">
+                <div id="profileData" class="col-xs-12">
                     <h3>Profile</h3>
-                    <ul id="username">
+                        <a href="#" class="thumbnail">
+                            <img id="profileImage" src="http://www.gravatar.com/avatar/" alt="Gravatar">
+                        </a>
+                    <ul>
                         <li id="username"></li>
+                        <li id="displayName"></li>
+                        <li id="email"></li>
                     </ul>
-                    <ul id="email">
-                        <il id="email"></il>
-                    </ul>
+                    
                     <button id="hideProfile" class="btn btn-danger">Hide</button>
-                    <button class="btn btn-primary">Edit</button>
+                    <button id="editProfile" class="btn btn-primary">Edit</button>
+                </div>
+                <div id="editProfileData" class="col-xs-12">
+                    <h3>Edit Display Name & Email</h3>
+                    <form method="post" action="/updateUser" > 
+                        <p><input name="username" type="text" class="form-control" placeholder="Update Display Name"></p>
+                        <p><input name="email" type="text" class="form-control" placeholder="Update Email"></p>
+                        <h3>Change Password</h3>
+                        <p><input name="currentPassword" type="password" class="form-control" placeholder="Current Password"></p>
+                        <p><input name="newPassword" type="password" class="form-control" placeholder="New Password"></p>
+                        <p><input name="newPasswordConfirm" type="password" class="form-control" placeholder="New Password Confirm"></p>
+                        <a id="cancelEdit" class="btn btn-danger">Cancel</a>
+                        <button id="changeProfile" type="submit" class="btn btn-primary">Change Profile</button>
+                    </form>
                 </div>
             </div>
         </div>

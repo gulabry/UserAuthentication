@@ -12,25 +12,28 @@
 </head>
 <body class="container">
     <header class="page-header">
+        <div id="result"></div> 
         <h3>Login</h3>
     </header>
         <script>
             
             $(function(){
                 
+                $("loginForm").submit(function() {
+                    
+                        $.ajax({
+                            url: '/signin/local',
+                            type: "POST",
+                            data: $("#loginForm").serialize(),
+                            success: function(response){
+                            alert(JSON.stringify(response));
+                            }
+                        });
+                    
+                });
+                
              });
 
-            function loginLocal(form) {
-                alert("loading");
-                var url = form.attr("action");
-                var formData = $(form).serializeArray();
-                alert(form);
-                $.post(url, formData).done(function (data) {
-                    alert("working" + data);
-                }).fail(function() {
-                    alert("Username or Password incorrect.")
-                });
-            }
 
         </script>
 
@@ -38,14 +41,13 @@
         
             <h1>Welcome</h1>
             
-            <form action="/signin/local" method="post"> 
+            <form action="/signin/local" id="loginForm" method="post"> 
                 <p><input name="username" type="text" class="form-control" placeholder="Username"></p>
                 <p><input name="password" type="password" class="form-control" placeholder="Password"></p>
 
-                <!--onclick="return loginLocal(this.signinForm)"-->
-                <button onclick="return loginLocal(this.signinForm)" class="btn btn-info">Sign In</button>
+                <button type="submit" class="btn btn-info">Sign In</button>
                 
-                <a href="/signup" class="btn btn-default">Sign Up</a>
+                <a href="/signup" id="signin" class="btn btn-default">Sign Up</a>
                 <a href="signin/facebook" class="btn btn-primary">Sign In with Facebook</a>
             </form>
         </div>
