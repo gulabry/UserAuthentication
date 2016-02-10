@@ -7,11 +7,12 @@ var bodyParser = require('body-parser');
 var session = require('express-session');
 var credentials = require('./secret/aws-credentials.json');
 var uuid = require('node-uuid');
+var User = require('./model/User');
 var passport = require('passport');
 var FacebookStrategy = require('passport-facebook').Strategy;
+var LocalStrategy = require('passport-local').Strategy;
 
 var app = express();
-
 
 //Connects to AWS Elasticache Endpoint
 var redisClient = require('redis').createClient(6379, credentials.aws.elasticacheEndpoint, {no_ready_check: true});
@@ -32,26 +33,86 @@ app.use(session({
 }));
 
 //Log all requests to application with Morgan
-app.use(morgan('combined'))
+app.use(morgan('dev'))
+
+//parse JSON in the request body
+app.use(bodyParser.urlencoded({
+  extended: true
+}));
 
 //Configure Passport
-passport.use(new FacebookStrategy({
-    clientID: credentials.facebook.clientId,
-    clientSecret: credentials.facebook.clientSecret,
-    callbackURL: "http://localhost:8080/secure.html"
-  },
-  function(accessToken, refreshToken, profile, cb) {
-      
-      
-      console.log(profile);
-      cb(null, profile);
-    // User.findOrCreate({ facebookId: profile.id }, function (err, user) {
-    //   return cb(err, user);
-    // });
-  }
-));
 
-database.listTables(function (err, data)
-{
-   console.log('Tables:', data);
+var localStrategy = new LocalStrategy(function(username, password, done) {
+   //code to validate that username and password are valid credentials
+   
+   //Dynamo DB query syntax
+    var params = {
+        AttributesToGet : ["email", "username"],
+        TableName : "User",
+        Key : {
+            "username" : {
+                "S" : username
+            }  
+        }
+    };
+
+    //find the user
+    database.getItem(params, function(err, data) {
+        if (err) {
+            console.log(err);
+            done(null, false);
+            
+        } else {
+           
+            var userObject = { 
+                username : data.Item.username.S,
+                email : data.Item.email.S 
+            }
+            
+            console.log('Local Stratgey: ' + JSON.stringify(userObject));
+            
+            done(null, JSON.stringify(userObject)); 
+        }
+    }); 
+});
+
+//use the configured local strategy
+passport.use(localStrategy);
+
+passport.serializeUser(function(user, done) {
+  done(null, user);
+});
+
+passport.deserializeUser(function(user, done) {
+  done(null, user);
+});
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+app.get('/', function(req, res) {
+    res.redirect("/index.html");
+});
+
+app.post('/signin/local', passport.authenticate('local'), function(req, res) {
+    res.redirect('/secure/secure.html');
+});
+                                                    
+//Load static files
+app.use(express.static(__dirname + '/static/'));
+
+//If user is logged in or not, redirect or keep walking down middleware chain
+app.use(function(req, res, next) {
+    
+    if (req.isAuthenticated()) {
+       return next();
+    } 
+    
+    res.redirect('/');
+});
+                                                                                  
+app.use(express.static(__dirname + '/static/secure/'));
+
+app.listen(80, function() {
+    console.log('server is listening..');
 });

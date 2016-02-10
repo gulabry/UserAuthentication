@@ -15,13 +15,15 @@
 
     <div class="jumbotron">
             <h1>Welcome</h1>
-  
-            <p><input type="text" class="form-control" placeholder="Username"></p>
-            <p><input type="text" class="form-control" placeholder="Password"></p>
+            
+            <form action="/signin/local" method="post"> 
+                <p><input name="username" type="text" class="form-control" placeholder="Username"></p>
+                <p><input name="password" type="password" class="form-control" placeholder="Password"></p>
+                <p><button type="submit" class="btn btn-primary">Sign In</button><a href="signup.html" class="btn btn-default">Sign Up</a></p>
+            </form>
 
-            <p><a href="secure.html" class="btn btn-info">Sign In</a><a href="signup.html" class="btn btn-default">Sign Up</a></p>
-            <p><a href="/signin/facebook" class="btn btn-primary">Sign In with Facebook</a></p>
-            <p><a href="/signin/github" class="btn btn-warning">Sign In with GitHub</a></p>
+            <p><a href="signin/facebook" class="btn btn-primary">Sign In with Facebook</a></p>
+            <p><a href="signin/github" class="btn btn-warning">Sign In with GitHub</a></p>
         </div>
 
 </body>
