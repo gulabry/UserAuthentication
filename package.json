@@ -1,0 +1,29 @@
+{
+  "name": "userauthentication",
+  "version": "1.0.0",
+  "description": "auth assignment for info 344",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "Bryan Gula",
+  "license": "BSD-2-Clause",
+  "dependencies": {
+    "angular": "^1.5.0",
+    "aws-sdk": "^2.2.34",
+    "bcrypt": "^0.8.5",
+    "bluebird": "^3.2.2",
+    "body-parser": "^1.14.2",
+    "connect-redis": "^3.0.2",
+    "dynamoDB": "^0.1.4",
+    "express": "~4.13.4",
+    "express-session": "^1.13.0",
+    "morgan": "^1.6.1",
+    "node-uuid": "^1.4.7",
+    "passport": "^0.3.2",
+    "passport-facebook": "^2.1.0",
+    "passport-local": "^1.0.0"
+  },
+  "devDependencies": {}
+}
