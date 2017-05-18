@@ -18,7 +18,7 @@
     "connect-redis": "^3.0.2",
     "crypto": "0.0.3",
     "dynamoDB": "^0.1.4",
-    "express": "~4.13.4",
+    "express": "~4.15.3",
     "express-session": "^1.13.0",
     "morgan": "^1.6.1",
     "node-uuid": "^1.4.7",
