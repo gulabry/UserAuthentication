@@ -15,7 +15,7 @@
     "bluebird": "^3.2.2",
     "body-parser": "^1.14.2",
     "connect-flash": "^0.1.1",
-    "connect-redis": "^3.0.2",
+    "connect-redis": "^4.0.0",
     "crypto": "0.0.3",
     "dynamoDB": "^0.1.4",
     "express": "~4.13.4",
